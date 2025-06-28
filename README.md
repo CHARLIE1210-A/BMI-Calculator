@@ -13,7 +13,11 @@ A simple Flutter application that calculates Body Mass Index (BMI) based on user
 - Optional summary analytics with line chart
 
 ## 📸 Screenshots
-*Coming soon*
+![Screenshot 1](assets/SS1.png)
+
+![Screenshot 2](assets/SS2.png)
+
+![Screenshot 3](assets/SS3.png)
 
 ---
 
