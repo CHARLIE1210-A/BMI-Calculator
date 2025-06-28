@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'database_helper.dart'; // Import your database helper
+import 'database_helper.dart';
+import 'package:intl/intl.dart';
 
 class BmiHistoryScreen extends StatefulWidget {
   const BmiHistoryScreen({super.key});
@@ -19,44 +20,29 @@ class _BmiHistoryScreenState extends State<BmiHistoryScreen> {
   }
 
   Color _getCategoryColor(double bmi) {
-    if (bmi < 18.5) {
-      return Colors.blue; // Underweight
-    } else if (bmi >= 18.5 && bmi < 25) {
-      return Colors.green; // Normal
-    } else if (bmi >= 25 && bmi < 30) {
-      return Colors.orange; // Overweight
-    } else {
-      return Colors.red; // Obese
-    }
+    if (bmi < 18.5) return Colors.blue;
+    if (bmi < 25) return Colors.green;
+    if (bmi < 30) return Colors.orange;
+    return Colors.red;
   }
 
-  String _getCategory(double bmi) {
-    if (bmi < 18.5) {
-      return 'Underweight';
-    } else if (bmi >= 18.5 && bmi < 25) {
-      return 'Normal';
-    } else if (bmi >= 25 && bmi < 30) {
-      return 'Overweight';
-    } else {
-      return 'Obese';
-    }
+  String _getCategoryText(double bmi) {
+    if (bmi < 18.5) return 'Underweight';
+    if (bmi < 25) return 'Normal';
+    if (bmi < 30) return 'Overweight';
+    return 'Obese';
   }
 
   List<FlSpot> _getBmiSpots(List<Map<String, dynamic>> records) {
-  return records.asMap().entries
-      .where((entry) => entry.value['bmi'] != null) // Filter out nulls
-      .map((entry) {
-        final index = entry.key;
-        final record = entry.value;
-        final bmiRaw = record['bmi'];
-
-        // Convert bmi to double safely
-        final bmi = bmiRaw is double ? bmiRaw : double.tryParse(bmiRaw.toString()) ?? 0.0;
-
-        return FlSpot(index.toDouble(), bmi);
-      }).toList();
-}
-
+    return records.asMap().entries
+        .where((entry) => entry.value['bmi'] != null)
+        .map((entry) {
+          final index = entry.key;
+          final bmiRaw = entry.value['bmi'];
+          final bmi = bmiRaw is double ? bmiRaw : double.tryParse(bmiRaw.toString()) ?? 0.0;
+          return FlSpot(index.toDouble(), bmi);
+        }).toList();
+  }
 
   SideTitles _buildBottomTitles(List<Map<String, dynamic>> records) {
     return SideTitles(
@@ -65,11 +51,10 @@ class _BmiHistoryScreenState extends State<BmiHistoryScreen> {
       getTitlesWidget: (value, meta) {
         if (value.toInt() >= 0 && value.toInt() < records.length) {
           final record = records[value.toInt()];
-          final date = DateTime.parse(record['date']);
-          return Text(
-            '${date.month}/${date.day}',
-            style: const TextStyle(fontSize: 10),
-          );
+          final date = DateTime.tryParse(record['date']);
+          if (date != null) {
+            return Text('${date.month}/${date.day}', style: const TextStyle(fontSize: 10));
+          }
         }
         return const Text('');
       },
@@ -87,9 +72,8 @@ class _BmiHistoryScreenState extends State<BmiHistoryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('BMI History'),
-      ),
+      backgroundColor: Colors.grey[100],
+      appBar: AppBar(title: const Text('BMI History')),
       body: Padding(
         padding: const EdgeInsets.all(8.0),
         child: FutureBuilder<List<Map<String, dynamic>>>(
@@ -119,15 +103,13 @@ class _BmiHistoryScreenState extends State<BmiHistoryScreen> {
                             spots: spots,
                             isCurved: true,
                             barWidth: 2,
-                            color: Colors.blue,
+                            color: Theme.of(context).colorScheme.primary,
                             belowBarData: BarAreaData(show: false),
                             dotData: FlDotData(show: true),
                           ),
                         ],
                         titlesData: FlTitlesData(
-                          bottomTitles: AxisTitles(
-                            sideTitles: _buildBottomTitles(records),
-                          ),
+                          bottomTitles: AxisTitles(sideTitles: _buildBottomTitles(records)),
                           leftTitles: AxisTitles(sideTitles: _leftTitles),
                           topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
                           rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
@@ -135,7 +117,7 @@ class _BmiHistoryScreenState extends State<BmiHistoryScreen> {
                         gridData: FlGridData(show: true),
                         borderData: FlBorderData(
                           show: true,
-                          border: Border.all(color: const Color(0xff37434d), width: 1),
+                          border: Border.all(color: Colors.grey, width: 0.5),
                         ),
                         lineTouchData: LineTouchData(enabled: true),
                       ),
@@ -148,19 +130,28 @@ class _BmiHistoryScreenState extends State<BmiHistoryScreen> {
                     itemCount: records.length,
                     itemBuilder: (context, index) {
                       final record = records[index];
-                      final bmi = record['bmi'];
-                      final date = DateTime.parse(record['date']);
-                      final formattedDate = "${date.day}/${date.month}/${date.year}";
+                      final bmiRaw = record['bmi'];
+                      final bmi = bmiRaw is double ? bmiRaw : double.tryParse(bmiRaw.toString()) ?? 0.0;
+                      final date = DateTime.tryParse(record['date']) ?? DateTime.now();
+                      final formattedDate = DateFormat('MMM dd, yyyy').format(date);
 
                       return Card(
-                        color: _getCategoryColor(bmi).withOpacity(0.2),
+                        elevation: 2.0,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
+                        color: Colors.white,
                         margin: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
                         child: ListTile(
-                          title: Text('${record['name']} - BMI: ${bmi.toStringAsFixed(2)}'),
+                          leading: CircleAvatar(
+                            backgroundColor: _getCategoryColor(bmi),
+                          ),
+                          title: Text(
+                            '${record['name']} - BMI: ${bmi.toStringAsFixed(2)}',
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
                           subtitle: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('Category: ${_getCategory(bmi)}'),
+                              Text('Category: ${_getCategoryText(bmi)}'),
                               Text('Date: $formattedDate'),
                             ],
                           ),
